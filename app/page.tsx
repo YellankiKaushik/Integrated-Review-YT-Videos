@@ -8,10 +8,10 @@ export default function Home() {
         <div className="mx-auto max-w-4xl">
           <div className="mb-8 text-center">
             <h1 className="mb-2 text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-5xl">
-              YouTube Comment Sentiment Analyzer
+              Integrated Review of YouTube Videos using Sentimental Analysis and AI Approach
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              Analyze the sentiment of comments on any YouTube video
+              Analyze the sentiment of comments using AI on any YouTube video
             </p>
           </div>
 

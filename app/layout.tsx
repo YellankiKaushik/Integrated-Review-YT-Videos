@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "YouTube Comment Sentiment Analyzer",
-  description: "Analyze the sentiment of comments on any YouTube video",
+  title: "Integrated Review of YouTube Videos using Sentimental Analysis and AI Approach ",
+  description: "Analyze the sentiment of comments using AI on any YouTube video",
     generator: 'v0.dev'
 }
 

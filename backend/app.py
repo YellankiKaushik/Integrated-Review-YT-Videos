@@ -15,8 +15,18 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Initialize the sentiment analysis pipeline
-sentiment_analyzer = pipeline("sentiment-analysis")
+# Initialize the sentiment analysis pipeline lazily with error handling
+sentiment_analyzer = None
+
+def get_sentiment_analyzer():
+    global sentiment_analyzer
+    if sentiment_analyzer is None:
+        try:
+            sentiment_analyzer = pipeline("sentiment-analysis")
+        except Exception as e:
+            print(f"ERROR initializing sentiment analyzer: {e}")
+            print("Sentiment analysis will be disabled.")
+    return sentiment_analyzer
 
 # YouTube API key from environment variables
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -291,7 +301,13 @@ def analyze_sentiment(comments):
     for comment in comments:
         try:
             # Process comments in batches to avoid rate limits
-            result = sentiment_analyzer(comment)
+            analyzer = get_sentiment_analyzer()
+            if analyzer is None:
+                # If sentiment analyzer is not available, skip sentiment analysis
+                sentiment_counts['neutral'] += 1
+                continue
+                
+            result = analyzer(comment)
             sentiment = result[0]
             
             # Using the same threshold as in the original code (0.9)
