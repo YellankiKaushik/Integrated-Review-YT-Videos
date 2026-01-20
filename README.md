@@ -1,8 +1,22 @@
-# YouTube Comment Sentiment Analyzer
+# Integrated Review of YouTube Videos - Sentiment Analysis & AI
 
-A full-stack application that analyzes the sentiment of YouTube video comments using machine learning and natural language processing. The application provides detailed sentiment analysis, including sentiment distribution, comment analysis, and transcript summaries.
+A full-stack web application that analyzes YouTube video comments using machine learning sentiment analysis and AI-powered summarization to provide content creators and marketers with actionable insights about viewer feedback.
 
-## Features
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/YellankiKaushik/Integrated-Review-YT-Videos)
+[![Built with](https://img.shields.io/badge/Built%20with-Next.js%20%26%20Flask-blueviolet)](https://nextjs.org)
+
+## 🎯 Features
+
+- ✅ **YouTube Integration**: Fetch and analyze comments from any public YouTube video
+- ✅ **Sentiment Analysis**: ML-powered sentiment classification (positive/negative/neutral)
+- ✅ **AI Summarization**: OpenAI-powered insights and recommendations
+- ✅ **Visual Analytics**: Interactive charts and sentiment distribution
+- ✅ **Real-time Processing**: Fast analysis with progress tracking
+- ✅ **Responsive UI**: Works seamlessly on desktop and mobile
+
+## 📁 Project Structure
+
+The project is organized into modular components for maintainability:
 
 - Analyze sentiment of YouTube video comments (positive, negative, neutral)
 - Visualize sentiment distribution with interactive charts

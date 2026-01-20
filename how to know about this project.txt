@@ -41,3 +41,59 @@ Backend	py -3.11 backend/app.py	5000
 Frontend	cd frontend && npm start	3000
 Access App	http://localhost:3000	-
 That's it! Both will start automatically. Do this every time you want to run your project.
+
+
+
+
+
+I'll help you deploy your project! Let me guide you through deploying both the frontend and backend.
+
+Part 1: Deploy Backend (Python Flask) to Render
+Go to: https://render.com
+Sign up with your GitHub account
+Click "New +" and select "Web Service"
+Connect your GitHub repository:
+Search for Integrated-Review-YT-Videos
+Click "Connect"
+Configure the service:
+Name: yt-sentiment-backend
+Environment: Python 3
+Build Command: pip install -r backend/requirements.txt
+Start Command: cd backend && python app.py
+Free Plan: Select (or paid if you prefer)
+Click "Create Web Service"
+Wait 3-5 minutes for deployment
+Copy your Backend URL (looks like: https://yt-sentiment-backend.onrender.com)
+Part 2: Deploy Frontend (Next.js) to Vercel
+Go to: https://vercel.com
+Sign up with your GitHub account
+Click "Add New..." and select "Project"
+Import your GitHub repository:
+Search for Integrated-Review-YT-Videos
+Click "Import"
+Configure the project:
+Framework Preset: Next.js
+Click on "Environment Variables"
+Add a new variable:
+Name: NEXT_PUBLIC_API_URL
+Value: https://yt-sentiment-backend.onrender.com (your backend URL from Part 1)
+Click "Deploy"
+Wait 2-3 minutes for deployment
+Copy your Frontend URL (looks like: https://yt-sentiment-xxx.vercel.app)
+Part 3: Update Backend to Accept Frontend Domain
+Go back to Render and add your Vercel frontend URL to CORS settings in app.py:
+
+In route.ts, the NEXT_PUBLIC_API_URL will automatically use your backend URL.
+
+Live Links After Deployment:
+Frontend: https://yt-sentiment-xxx.vercel.app
+Backend: https://yt-sentiment-backend.onrender.com
+Let me know once you complete the deployment steps, and I'll verify everything is working!
+
+Just share:
+
+Your Vercel frontend URL
+Your Render backend URL
+And I'll test and confirm both are connected properly! 🚀
+
+Claude Haiku 4.5 • 
