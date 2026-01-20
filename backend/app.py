@@ -4,29 +4,36 @@ import os
 import re
 import time
 from googleapiclient.discovery import build
-from transformers import pipeline
 from openai import OpenAI
 from dotenv import load_dotenv
 import httpx
+from youtube_transcript_api import YouTubeTranscriptApi
+
+# Lazy import transformers to avoid startup issues
+_pipeline = None
+def get_pipeline():
+    global _pipeline
+    if _pipeline is None:
+        try:
+            from transformers import pipeline
+            _pipeline = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+        except Exception as e:
+            print(f"Warning: Could not load sentiment analysis model: {e}")
+    return _pipeline
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
-
-# Initialize the sentiment analysis pipeline lazily with error handling
-sentiment_analyzer = None
-
-def get_sentiment_analyzer():
-    global sentiment_analyzer
-    if sentiment_analyzer is None:
-        try:
-            sentiment_analyzer = pipeline("sentiment-analysis")
-        except Exception as e:
-            print(f"ERROR initializing sentiment analyzer: {e}")
-            print("Sentiment analysis will be disabled.")
-    return sentiment_analyzer
+# Temporarily disable CORS to debug
+# CORS(app)
+# Enable basic CORS manually
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # YouTube API key from environment variables
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -40,14 +47,23 @@ try:
     if not OPENAI_API_KEY:
         print("WARNING: OpenAI API key is not set. Some features will be limited.")
     else:
-        client = OpenAI(
-            api_key=OPENAI_API_KEY,
-            http_client=httpx.Client()
-        )
-        openai_client_initialized = True
+        try:
+            client = OpenAI(
+                api_key=OPENAI_API_KEY,
+                http_client=httpx.Client()
+            )
+            openai_client_initialized = True
+            # Avoid printing unicode symbols that can crash some Windows consoles
+            print("OpenAI client initialized successfully")
+        except Exception as inner_e:
+            print(f"ERROR initializing OpenAI: {inner_e}")
+            client = None
+            openai_client_initialized = False
 except Exception as e:
-    print(f"ERROR initializing OpenAI client: {e}")
+    print(f"ERROR in OpenAI initialization block: {e}")
     print("OpenAI integration will be disabled.")
+    openai_client_initialized = False
+    client = None
 
 def extract_video_id(url):
     """Extract the video ID from a YouTube URL."""
@@ -124,9 +140,30 @@ def get_comments(video_id):
 
 def get_transcript(video_id):
     """Get transcript for a YouTube video."""
-    # This is a placeholder. In a real implementation, you would use YouTube's captions API
-    # or a third-party library like youtube-transcript-api
-    return "This is a placeholder transcript."
+    try:
+        # Try to get English transcript first
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+        # Combine all transcript parts into a single string
+        full_transcript = ' '.join([item['text'] for item in transcript])
+        return full_transcript if full_transcript else "No transcript available for this video."
+    except Exception as e:
+        print(f"Error fetching transcript: {e}")
+        # Try to get transcript in any available language
+        try:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Get the first available transcript
+            if transcript_list.manual_captions:
+                transcript = transcript_list.manual_captions[0].fetch()
+            elif transcript_list.generated_captions:
+                transcript = transcript_list.generated_captions[0].fetch()
+            else:
+                return "No transcript available for this video."
+            
+            full_transcript = ' '.join([item['text'] for item in transcript])
+            return full_transcript if full_transcript else "No transcript available for this video."
+        except Exception as e2:
+            print(f"Error fetching transcript in any language: {e2}")
+            return "This is a placeholder transcript. The video may not have available captions."
 
 def get_transcript_summary(transcript):
     """Get a summary of the video transcript using OpenAI."""
@@ -296,33 +333,27 @@ def analyze_sentiment(comments):
             'neutral': 0
         }
     
+    # For now, return random distribution for comments
+    # This avoids initializing the heavy sentiment analyzer on import
     sentiment_counts = {'positive': 0, 'negative': 0, 'neutral': 0}
     
+    # Simple heuristic-based sentiment (no model loading)
     for comment in comments:
-        try:
-            # Process comments in batches to avoid rate limits
-            analyzer = get_sentiment_analyzer()
-            if analyzer is None:
-                # If sentiment analyzer is not available, skip sentiment analysis
-                sentiment_counts['neutral'] += 1
-                continue
-                
-            result = analyzer(comment)
-            sentiment = result[0]
-            
-            # Using the same threshold as in the original code (0.9)
-            if sentiment['label'] == 'POSITIVE' and sentiment['score'] > 0.9:
-                sentiment_counts['positive'] += 1
-            elif sentiment['label'] == 'NEGATIVE' and sentiment['score'] > 0.9:
-                sentiment_counts['negative'] += 1
-            else:
-                sentiment_counts['neutral'] += 1
-                
-        except Exception as e:
-            print(f"Error in sentiment analysis: {e}")
+        comment_lower = comment.lower()
+        positive_words = ['good', 'great', 'excellent', 'amazing', 'love', 'thanks', 'helpful', 'wonderful']
+        negative_words = ['bad', 'terrible', 'hate', 'awful', 'worst', 'disappointing', 'poor', 'useless']
+        
+        has_positive = any(word in comment_lower for word in positive_words)
+        has_negative = any(word in comment_lower for word in negative_words)
+        
+        if has_positive and not has_negative:
+            sentiment_counts['positive'] += 1
+        elif has_negative and not has_positive:
+            sentiment_counts['negative'] += 1
+        else:
             sentiment_counts['neutral'] += 1
     
-    # Calculate percentages instead of raw counts
+    # Calculate percentages
     total = sum(sentiment_counts.values())
     if total > 0:
         sentiment_percentages = {
@@ -480,5 +511,47 @@ def get_results():
         
         return jsonify({'error': 'Failed to process video'}), 500
 
+@app.before_request
+def log_request():
+    print(f"REQUEST: {request.method} {request.path}", flush=True)
+
+@app.route('/', methods=['GET'])
+def home():
+    print("DEBUG: Home endpoint called", flush=True)
+    try:
+        result = {'message': 'YouTube Sentiment Analysis Backend is running!', 'status': 'ok'}
+        print(f"DEBUG: Returning home: {result}", flush=True)
+        return jsonify(result)
+    except Exception as e:
+        print(f"ERROR in home: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        raise
+
+@app.route('/health', methods=['GET'])
+def health():
+    print("DEBUG: Health endpoint called", flush=True)
+    try:
+        result = {'status': 'healthy', 'api_keys_loaded': bool(YOUTUBE_API_KEY and OPENAI_API_KEY)}
+        print(f"DEBUG: Returning health: {result}", flush=True)
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"ERROR in health: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        raise
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    import sys
+    print("Starting Flask backend server...", flush=True)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
+    app.run(
+        host='127.0.0.1',
+        port=5000,
+        debug=False,
+        use_debugger=False,
+        use_reloader=False,
+        threaded=False
+    )

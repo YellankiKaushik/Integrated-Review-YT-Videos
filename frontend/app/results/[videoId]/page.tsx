@@ -10,7 +10,8 @@ import { ArrowLeft } from "lucide-react"
 
 async function getVideoResults(videoId: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/results?videoId=${videoId}`, {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+    const response = await fetch(`${backendUrl}/api/results?videoId=${videoId}`, {
       cache: "no-store",
     })
 
